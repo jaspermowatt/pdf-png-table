@@ -17,16 +17,9 @@ load_dotenv()
 def show_review_page(processor, gridlines):
     st.title("Review All Pages")
     
-    # Initialize ExtractTable with API key
-    api_key = os.getenv("EXTRACTTABLE_API_KEY")
-    if not api_key:
-        st.error("ExtractTable API key not found. Please set the EXTRACTTABLE_API_KEY environment variable.")
-        st.stop()
-    
-    st.session_state.extractor = ExtractTable(api_key=api_key)
-    # Validate API key and show credits
-    usage = st.session_state.extractor.check_usage()
-    st.sidebar.info(f"API Credits remaining: {usage['remaining_credits']}")
+    # Initialize ExtractTable
+    if not hasattr(st.session_state, 'extractor'):
+        st.session_state.extractor = initialize_extractor()
     
     # Display all processed pages with their gridlines
     for page_num in range(len(st.session_state.pages)):
@@ -124,15 +117,9 @@ def show_review_page(processor, gridlines):
 def show_table_editor(processor, gridlines):
     st.title("Step 5: Review and Edit Tables")
     
-    # Initialize ExtractTable with API key if not already done
-    api_key = os.getenv("EXTRACTTABLE_API_KEY")
-    if not api_key:
-        st.error("ExtractTable API key not found. Please set the EXTRACTTABLE_API_KEY environment variable.")
-        st.stop()
-    
-    st.session_state.extractor = ExtractTable(api_key=api_key)
-    usage = st.session_state.extractor.check_usage()
-    st.sidebar.info(f"API Usage Info: {usage}")
+    # Initialize ExtractTable if not already done
+    if not hasattr(st.session_state, 'extractor'):
+        st.session_state.extractor = initialize_extractor()
     
     # Initialize tables dict if not exists
     if 'extracted_tables' not in st.session_state:
