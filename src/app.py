@@ -252,20 +252,29 @@ def initialize_extractor():
                 if not api_key:
                     st.error("Please enter an API key")
                     st.stop()
-                st.session_state.api_key = api_key
+                try:
+                    # Try to initialize and validate the API key before saving it
+                    extractor = ExtractTable(api_key=api_key)
+                    usage = extractor.check_usage()
+                    st.session_state.api_key = api_key
+                    st.sidebar.success("✅ API connected successfully")
+                    st.sidebar.info(f"API Credits remaining: {usage['remaining_credits']}")
+                    return extractor
+                except Exception as e:
+                    st.error(f"Invalid API key: {str(e)}")
+                    st.stop()
         
         if 'api_key' not in st.session_state:
             st.stop()
     
     try:
         extractor = ExtractTable(api_key=st.session_state.api_key)
-        # Validate API key
         usage = extractor.check_usage()
         st.sidebar.success("✅ API connected successfully")
         st.sidebar.info(f"API Credits remaining: {usage['remaining_credits']}")
         return extractor
     except Exception as e:
-        # If API key is invalid, remove it from session state
+        # If API key becomes invalid, remove it from session state
         if 'api_key' in st.session_state:
             del st.session_state.api_key
         st.error(f"Invalid API key: {str(e)}")
