@@ -12,6 +12,7 @@ import pandas as pd
 from dotenv import load_dotenv
 import requests
 import io
+from pdf2image import convert_from_path
 
 # Load environment variables
 load_dotenv()
@@ -325,12 +326,66 @@ def initialize_extractor():
         st.error(f"Error validating API key: {str(e)}")
         st.stop()
 
+def show_pdf_preview(uploaded_file):
+    """Show PDF preview and allow page selection"""
+    st.title("Step 1: Select Pages with Tables")
+    
+    if 'selected_pages' not in st.session_state:
+        st.session_state.selected_pages = []
+    
+    # Convert PDF to images for preview
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp_file:
+        tmp_file.write(uploaded_file.getvalue())
+        pdf_path = tmp_file.name
+        all_pages = convert_from_path(pdf_path)
+        
+        # Store total number of pages
+        st.session_state.total_pages = len(all_pages)
+        
+        # Create columns for the preview
+        cols = st.columns(4)  # Show 4 pages per row
+        
+        for idx, page in enumerate(all_pages):
+            col = cols[idx % 4]
+            with col:
+                # Convert page to thumbnail
+                thumb = page.copy()
+                thumb.thumbnail((200, 200))  # Adjust size as needed
+                
+                # Show page number and checkbox
+                st.image(thumb, caption=f"Page {idx + 1}")
+                if st.checkbox("Select", key=f"page_{idx}", 
+                             value=(idx in st.session_state.selected_pages)):
+                    if idx not in st.session_state.selected_pages:
+                        st.session_state.selected_pages.append(idx)
+                else:
+                    if idx in st.session_state.selected_pages:
+                        st.session_state.selected_pages.remove(idx)
+    
+    # Show selected pages count and proceed button
+    st.markdown("---")
+    if st.session_state.selected_pages:
+        st.info(f"Selected {len(st.session_state.selected_pages)} pages")
+        if st.button("Proceed with Selected Pages"):
+            # Convert only selected pages to processed pages
+            st.session_state.pages = []
+            st.session_state.processed_pages = {}
+            
+            for idx in sorted(st.session_state.selected_pages):
+                page_image = np.array(all_pages[idx])
+                st.session_state.pages.append(page_image)
+                
+            st.session_state.step = 2  # Move to cropping step
+            st.rerun()
+    else:
+        st.warning("Please select at least one page to continue")
+
 def main():
     st.set_page_config(layout="wide")
     
     # Initialize state
     if 'step' not in st.session_state:
-        st.session_state.step = 1  # Start at step 1
+        st.session_state.step = 1  # Start at PDF preview
         st.session_state.processor = PDFProcessor()
         st.session_state.current_page = 0
         st.session_state.pages = []
@@ -338,23 +393,11 @@ def main():
         st.session_state.show_cropper = False
         st.session_state.zoom_level = 1.0
 
-    # Step 1: Load PDF
+    # Step 1: PDF Preview and Page Selection
     if st.session_state.step == 1:
-        st.title("Step 1: Load PDF")
         uploaded_file = st.file_uploader("Upload PDF", type=['pdf'])
-        
         if uploaded_file:
-            with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp_file:
-                tmp_file.write(uploaded_file.getvalue())
-                pdf_path = tmp_file.name
-                
-            if not st.session_state.pages:
-                st.session_state.pages = st.session_state.processor.convert_pdf(pdf_path)
-                st.session_state.processor.current_image = st.session_state.pages[0]
-            
-            if st.button("Proceed to Cropping"):
-                st.session_state.step = 2
-                st.rerun()
+            show_pdf_preview(uploaded_file)
 
     # Step 2: Crop Pages
     elif st.session_state.step == 2:
