@@ -374,7 +374,7 @@ def show_pdf_preview(uploaded_file):
             for idx in sorted(st.session_state.selected_pages):
                 page_image = np.array(all_pages[idx])
                 st.session_state.pages.append(page_image)
-                
+            
             st.session_state.step = 2  # Move to cropping step
             st.rerun()
     else:
@@ -423,7 +423,6 @@ def main():
         # Cropping interface
         main_col1, main_col2 = st.columns([4, 1])
         with main_col1:
-            # Always set the current image to the correct page
             st.session_state.processor.current_image = st.session_state.pages[st.session_state.current_page]
             
             if not st.session_state.show_cropper:
@@ -432,7 +431,6 @@ def main():
                     st.rerun()
             
             if st.session_state.show_cropper:
-                # Convert numpy array to PIL Image for the cropper
                 pil_image = Image.fromarray(st.session_state.processor.current_image)
                 cropped_img = st_cropper(
                     pil_image,
@@ -455,13 +453,10 @@ def main():
                             int(box['width']),
                             int(box['height'])
                         )
-                        # Make sure we're using the correct page
-                        st.session_state.processor.current_image = st.session_state.pages[st.session_state.current_page]
                         st.session_state.processor.crop_to_box(adjusted_box)
                         current_page_key = f"page_{st.session_state.current_page}"
-                        st.session_state.processed_pages[current_page_key] = np.array(st.session_state.processor.current_image)
+                        st.session_state.processed_pages[current_page_key] = st.session_state.processor.current_image
                         st.session_state.show_cropper = False
-                        delattr(st.session_state, 'crop_box')
                         st.rerun()
 
         # Proceed button
