@@ -1,0 +1,10 @@
+streamlit
+streamlit-cropper
+streamlit-image-coordinates
+pdf2image
+Pillow
+numpy
+pandas
+openpyxl
+ExtractTable
+python-dotenv 
