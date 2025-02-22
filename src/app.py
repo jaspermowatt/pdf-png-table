@@ -11,6 +11,7 @@ from ExtractTable import ExtractTable
 import pandas as pd
 from dotenv import load_dotenv
 import requests
+import io
 
 # Load environment variables
 load_dotenv()
@@ -109,11 +110,23 @@ def show_review_page(processor, gridlines):
                         finally:
                             os.remove(temp_path)
                 
-                # Save all tables to Excel
-                with pd.ExcelWriter('extracted_tables.xlsx') as writer:
+                # Create Excel file in memory
+                output = io.BytesIO()
+                with pd.ExcelWriter(output, engine='openpyxl') as writer:
                     for idx, df in enumerate(all_tables):
                         df.to_excel(writer, sheet_name=f'Table_{idx + 1}', index=False)
-                st.success("All tables exported to 'extracted_tables.xlsx'!")
+                
+                # Prepare the file for download
+                output.seek(0)
+                
+                # Create download button
+                st.download_button(
+                    label="📥 Download Excel file",
+                    data=output,
+                    file_name="extracted_tables.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+                st.success(f"Successfully processed {len(all_tables)} tables! Click above to download.")
 
 def show_table_editor(processor, gridlines):
     st.title("Step 5: Review and Edit Tables")
@@ -229,7 +242,9 @@ def show_table_editor(processor, gridlines):
     # Export button at the bottom
     st.markdown("---")
     if st.button("Export All Tables to Excel"):
-        with pd.ExcelWriter('extracted_tables.xlsx') as writer:
+        # Create Excel file in memory
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
             table_count = 0
             for page_num in range(len(st.session_state.pages)):
                 page_key = f"page_{page_num}"
@@ -238,7 +253,18 @@ def show_table_editor(processor, gridlines):
                         sheet_name = f'Page{page_num+1}_Table{idx+1}'
                         df.to_excel(writer, sheet_name=sheet_name, index=False)
                         table_count += 1
-        st.success(f"Successfully exported {table_count} tables to 'extracted_tables.xlsx'!")
+        
+        # Prepare the file for download
+        output.seek(0)
+        
+        # Create download button
+        st.download_button(
+            label="📥 Download Excel file",
+            data=output,
+            file_name="extracted_tables.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+        st.success(f"Successfully processed {table_count} tables! Click above to download.")
 
 def initialize_extractor():
     """Initialize ExtractTable with API key from user input"""
