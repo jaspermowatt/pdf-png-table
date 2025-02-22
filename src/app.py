@@ -10,6 +10,7 @@ from table_extractor import TableExtractor
 from ExtractTable import ExtractTable
 import pandas as pd
 from dotenv import load_dotenv
+import requests
 
 # Load environment variables
 load_dotenv()
@@ -253,31 +254,49 @@ def initialize_extractor():
                     st.error("Please enter an API key")
                     st.stop()
                 try:
-                    # Try to initialize and validate the API key before saving it
-                    extractor = ExtractTable(api_key=api_key)
-                    usage = extractor.check_usage()
-                    st.session_state.api_key = api_key
-                    st.sidebar.success("✅ API connected successfully")
-                    st.sidebar.info(f"API Credits remaining: {usage['remaining_credits']}")
-                    return extractor
+                    # Validate API key using requests
+                    headers = {
+                        'x-api-key': api_key
+                    }
+                    response = requests.get('https://validator.extracttable.com', headers=headers)
+                    
+                    if response.status_code == 200:
+                        # API key is valid
+                        extractor = ExtractTable(api_key=api_key)
+                        st.session_state.api_key = api_key
+                        st.sidebar.success("✅ API connected successfully")
+                        return extractor
+                    else:
+                        st.error(f"Invalid API key: {response.text}")
+                        st.stop()
                 except Exception as e:
-                    st.error(f"Invalid API key: {str(e)}")
+                    st.error(f"Error validating API key: {str(e)}")
                     st.stop()
         
         if 'api_key' not in st.session_state:
             st.stop()
     
     try:
-        extractor = ExtractTable(api_key=st.session_state.api_key)
-        usage = extractor.check_usage()
-        st.sidebar.success("✅ API connected successfully")
-        st.sidebar.info(f"API Credits remaining: {usage['remaining_credits']}")
-        return extractor
+        # Re-validate stored API key
+        headers = {
+            'x-api-key': st.session_state.api_key
+        }
+        response = requests.get('https://validator.extracttable.com', headers=headers)
+        
+        if response.status_code == 200:
+            extractor = ExtractTable(api_key=st.session_state.api_key)
+            st.sidebar.success("✅ API connected successfully")
+            return extractor
+        else:
+            # If API key becomes invalid, remove it from session state
+            if 'api_key' in st.session_state:
+                del st.session_state.api_key
+            st.error(f"Invalid API key: {response.text}")
+            st.stop()
     except Exception as e:
-        # If API key becomes invalid, remove it from session state
         if 'api_key' in st.session_state:
             del st.session_state.api_key
-        st.error(f"Invalid API key: {str(e)}")
+        st.error(f"Error validating API key: {str(e)}")
         st.stop()
 
 def main():

@@ -8,4 +8,5 @@ pandas
 openpyxl
 ExtractTable
 python-dotenv
-opencv-python-headless 
+opencv-python-headless
+requests 
